@@ -1,0 +1,18 @@
+{application, erlymail_scheduler,
+    [
+        {description, "Stores emails to be sent at a later time."},
+        {vsn, "1"},
+        {registered, []},
+        {applications,
+            [
+                kernel,
+                stdlib,
+                crypto,
+                public_key,
+                ssl
+            ]
+        },
+        {mod, { erlymail_scheduler_app, []}},
+        {env, []}
+    ]
+}.
