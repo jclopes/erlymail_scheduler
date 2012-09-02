@@ -6,7 +6,7 @@
 
 %% API interface
 -export ([
-    add/2,
+    add/3,
     remove/1,
     list/0,
     send_ready/0,
@@ -24,7 +24,7 @@
 ]).
 
 %% Internal functions
--export([worker/1]).
+-export([worker/2]).
 
 %% ===================================================================
 %% API functions
@@ -34,8 +34,11 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, no_args, [])
 .
 
-add(Time, Message) ->
-    gen_server:call(?MODULE, {add, {Time, Message}})
+% Time: tuple format {{Year, Month, Day}, {Hour, Minute, Second}}
+% SmtpConn: term() as return by esmtp:conn/3
+% Message: term() as return by esmtp_mime:msg/4
+add(Time, SmtpConn, Message) ->
+    gen_server:call(?MODULE, {add, {Time, SmtpConn, Message}})
 .
 
 remove(MessageId) ->
@@ -80,11 +83,11 @@ handle_call(
     {reply, Reply, S#state{time_index=NTimeIx}}
 ;
 handle_call(
-    {add, {Time, Message}},
+    {add, {Time, SmtpConn, Message}},
     _From,
     #state{message_db=MsgDb, time_index=TimeIx, next_id=Id}=S
 ) ->
-    Row = #db_row{id=Id, time=Time, msg=Message},
+    Row = #db_row{id=Id, time=Time, msg={SmtpConn,Message}},
     ets:insert(MsgDb, Row),
     NTimeIx = gb_sets:add({Time, Id}, TimeIx),
     Reply = {ok, Message},
@@ -111,8 +114,8 @@ handle_cast(
     NWorkers = lists:foldl(
         fun(MsgId, WrkDict) ->
             [Row] = ets:lookup(MsgDb, MsgId),
-            Msg = Row#db_row.msg,
-            Pid = spawn_link(?MODULE, worker, [Msg]),
+            {SmtpConn, Message} = Row#db_row.msg,
+            Pid = spawn_link(?MODULE, worker, [SmtpConn, Message]),
             dict:store(Pid, MsgId, WrkDict)
         end,
         Workers,
@@ -185,6 +188,8 @@ pop_msg_older_acc(TimeIx, DateTime, Acc) ->
     end
 .
 
-worker(Email) when is_binary(Email), size(Email) > 0 ->
-    io:format("Message sent! : ~p~n", [Email])
+worker(SmtpConn, EmailMsg) when is_binary(EmailMsg), size(EmailMsg) > 0 ->
+    Res = esmtp:send(SmtpConn, EmailMsg),
+    io:format("Message sent! : ~p~n", [EmailMsg]),
+    Res
 .
