@@ -188,7 +188,7 @@ pop_msg_older_acc(TimeIx, DateTime, Acc) ->
     end
 .
 
-worker(SmtpConn, EmailMsg) when is_binary(EmailMsg), size(EmailMsg) > 0 ->
+worker(SmtpConn, EmailMsg) ->
     Res = esmtp:send(SmtpConn, EmailMsg),
     io:format("Message sent! : ~p~n", [EmailMsg]),
     Res
