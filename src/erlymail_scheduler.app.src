@@ -1,7 +1,7 @@
 {application, erlymail_scheduler,
     [
         {description, "Stores emails to be sent at a later time."},
-        {vsn, "1"},
+        {vsn, "0.1.0"},
         {registered, []},
         {applications,
             [
